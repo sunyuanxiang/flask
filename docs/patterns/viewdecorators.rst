@@ -16,15 +16,13 @@ Login Required Decorator
 ------------------------
 
 So let's implement such a decorator.  A decorator is a function that
-returns a function.  Pretty simple actually.  The only thing you have to
-keep in mind when implementing something like this is to update the
-`__name__`, `__module__` and some other attributes of a function.  This is
-often forgotten, but you don't have to do that by hand, there is a
-function for that that is used like a decorator (:func:`functools.wraps`).
+wraps and replaces another function.  Since the original function is
+replaced, you need to remember to copy the original function's information
+to the new function.  Use :func:`functools.wraps` to handle this for you.
 
 This example assumes that the login page is called ``'login'`` and that
-the current user is stored as `g.user` and ``None`` if there is no-one
-logged in::
+the current user is stored in ``g.user`` and is ``None`` if there is no-one
+logged in. ::
 
     from functools import wraps
     from flask import g, request, redirect, url_for
@@ -37,14 +35,23 @@ logged in::
             return f(*args, **kwargs)
         return decorated_function
 
-So how would you use that decorator now?  Apply it as innermost decorator
-to a view function.  When applying further decorators, always remember
-that the :meth:`~flask.Flask.route` decorator is the outermost::
+To use the decorator, apply it as innermost decorator to a view function.
+When applying further decorators, always remember
+that the :meth:`~flask.Flask.route` decorator is the outermost. ::
 
     @app.route('/secret_page')
     @login_required
     def secret_page():
         pass
+
+.. note::
+    The ``next`` value will exist in ``request.args`` after a ``GET`` request for
+    the login page.  You'll have to pass it along when sending the ``POST`` request
+    from the login form.  You can do this with a hidden input tag, then retrieve it
+    from ``request.form`` when logging the user in. ::
+
+        <input type="hidden" value="{{ request.args.get('next', '') }}"/>
+
 
 Caching Decorator
 -----------------
@@ -52,7 +59,7 @@ Caching Decorator
 Imagine you have a view function that does an expensive calculation and
 because of that you would like to cache the generated results for a
 certain amount of time.  A decorator would be nice for that.  We're
-assuming you have set up a cache like mentioned in :ref:`caching-pattern`.
+assuming you have set up a cache like mentioned in :doc:`caching`.
 
 Here is an example cache function.  It generates the cache key from a
 specific prefix (actually a format string) and the current path of the
@@ -63,7 +70,7 @@ straightforward to read.
 
 The decorated function will then work as follows
 
-1. get the unique cache key for the current request base on the current
+1. get the unique cache key for the current request based on the current
    path.
 2. get the value for that key from the cache. If the cache returned
    something we will return that value.
@@ -75,11 +82,11 @@ Here the code::
     from functools import wraps
     from flask import request
 
-    def cached(timeout=5 * 60, key='view/%s'):
+    def cached(timeout=5 * 60, key='view/{}'):
         def decorator(f):
             @wraps(f)
             def decorated_function(*args, **kwargs):
-                cache_key = key % request.path
+                cache_key = key.format(request.path)
                 rv = cache.get(cache_key)
                 if rv is not None:
                     return rv
@@ -89,8 +96,8 @@ Here the code::
             return decorated_function
         return decorator
 
-Notice that this assumes an instantiated `cache` object is available, see
-:ref:`caching-pattern` for more information.
+Notice that this assumes an instantiated ``cache`` object is available, see
+:doc:`caching`.
 
 
 Templating Decorator
@@ -135,8 +142,7 @@ Here is the code for that decorator::
             def decorated_function(*args, **kwargs):
                 template_name = template
                 if template_name is None:
-                    template_name = request.endpoint \
-                        .replace('.', '/') + '.html'
+                    template_name = f"'{request.endpoint.replace('.', '/')}.html'"
                 ctx = f(*args, **kwargs)
                 if ctx is None:
                     ctx = {}

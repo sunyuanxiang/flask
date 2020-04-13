@@ -1,31 +1,89 @@
-:orphan:
+.. rst-class:: hide-header
 
 Welcome to Flask
 ================
 
-.. image:: _static/logo-full.png
-   :alt: Flask: web development, one drop at a time
-   :class: floatingflask
+.. image:: _static/flask-logo.png
+    :alt: Flask: web development, one drop at a time
+    :align: center
+    :target: https://palletsprojects.com/p/flask/
 
-Welcome to Flask's documentation.  This documentation is divided into
-different parts.  I recommend that you get started with
-:ref:`installation` and then head over to the :ref:`quickstart`.
-Besides the quickstart, there is also a more detailed :ref:`tutorial` that
-shows how to create a complete (albeit small) application with Flask.  If
-you'd rather dive into the internals of Flask, check out
-the :ref:`api` documentation.  Common patterns are described in the
-:ref:`patterns` section.
+Welcome to Flask's documentation. Get started with :doc:`installation`
+and then get an overview with the :doc:`quickstart`. There is also a
+more detailed :doc:`tutorial/index` that shows how to create a small but
+complete application with Flask. Common patterns are described in the
+:doc:`patterns/index` section. The rest of the docs describe each
+component of Flask in detail, with a full reference in the :doc:`api`
+section.
 
-Flask depends on two external libraries: the `Jinja2`_ template
-engine and the `Werkzeug`_ WSGI toolkit.  These libraries are not documented
-here.  If you want to dive into their documentation, check out the
-following links:
+Flask depends on the `Jinja`_ template engine and the `Werkzeug`_ WSGI
+toolkit. The documentation for these libraries can be found at:
 
--   `Jinja2 Documentation <http://jinja.pocoo.org/docs>`_
--   `Werkzeug Documentation <http://werkzeug.pocoo.org/docs>`_
+- `Jinja documentation <https://jinja.palletsprojects.com/>`_
+- `Werkzeug documentation <https://werkzeug.palletsprojects.com/>`_
+
+.. _Jinja: https://www.palletsprojects.com/p/jinja/
+.. _Werkzeug: https://www.palletsprojects.com/p/werkzeug/
 
 
-.. _Jinja2: http://jinja.pocoo.org/
-.. _Werkzeug: http://werkzeug.pocoo.org/
+User's Guide
+------------
 
-.. include:: contents.rst.inc
+This part of the documentation, which is mostly prose, begins with some
+background information about Flask, then focuses on step-by-step
+instructions for web development with Flask.
+
+.. toctree::
+   :maxdepth: 2
+
+   foreword
+   advanced_foreword
+   installation
+   quickstart
+   tutorial/index
+   templating
+   testing
+   errorhandling
+   logging
+   config
+   signals
+   views
+   appcontext
+   reqcontext
+   blueprints
+   extensions
+   cli
+   server
+   shell
+   patterns/index
+   deploying/index
+   becomingbig
+
+
+API Reference
+-------------
+
+If you are looking for information on a specific function, class or
+method, this part of the documentation is for you.
+
+.. toctree::
+   :maxdepth: 2
+
+   api
+
+
+Additional Notes
+----------------
+
+Design notes, legal information and changelog are here for the interested.
+
+.. toctree::
+   :maxdepth: 2
+
+   design
+   htmlfaq
+   security
+   extensiondev
+   changelog
+   license
+   contributing

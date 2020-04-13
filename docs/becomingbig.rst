@@ -1,5 +1,3 @@
-.. _becomingbig:
-
 Becoming Big
 ============
 
@@ -12,7 +10,7 @@ Flask started in part to demonstrate how to build your own framework on top of
 existing well-used tools Werkzeug (WSGI) and Jinja (templating), and as it
 developed, it became useful to a wide audience.  As you grow your codebase,
 don't just use Flask -- understand it.  Read the source.  Flask's code is
-written to be read; it's documentation is published so you can use its internal
+written to be read; its documentation is published so you can use its internal
 APIs.  Flask sticks to documented APIs in upstream libraries, and documents its
 internal utilities so that you can find the hook points needed for your
 project.
@@ -20,14 +18,14 @@ project.
 Hook. Extend.
 -------------
 
-The :ref:`api` docs are full of available overrides, hook points, and
-:ref:`signals`. You can provide custom classes for things like the request and
-response objects.  Dig deeper on the APIs you use, and look for the
-customizations which are available out of the box in a Flask release.  Look for
-ways in which your project can be refactored into a collection of utilities and
-Flask extensions.  Explore the many `extensions
-<http://flask.pocoo.org/extensions/>`_ in the community, and look for patterns to
-build your own extensions if you do not find the tools you need.
+The :doc:`/api` docs are full of available overrides, hook points, and
+:doc:`/signals`. You can provide custom classes for things like the
+request and response objects. Dig deeper on the APIs you use, and look
+for the customizations which are available out of the box in a Flask
+release. Look for ways in which your project can be refactored into a
+collection of utilities and Flask extensions. Explore the many
+:doc:`/extensions` in the community, and look for patterns to build your
+own extensions if you do not find the tools you need.
 
 Subclass.
 ---------
@@ -35,16 +33,17 @@ Subclass.
 The :class:`~flask.Flask` class has many methods designed for subclassing. You
 can quickly add or customize behavior by subclassing :class:`~flask.Flask` (see
 the linked method docs) and using that subclass wherever you instantiate an
-application class. This works well with :ref:`app-factories`.
+application class. This works well with :doc:`/patterns/appfactories`.
+See :doc:`/patterns/subclassing` for an example.
 
 Wrap with middleware.
 ---------------------
 
-The :ref:`app-dispatch` chapter shows in detail how to apply middleware. You
+The :doc:`/patterns/appdispatch` pattern shows in detail how to apply middleware. You
 can introduce WSGI middleware to wrap your Flask instances and introduce fixes
 and changes at the layer between your Flask application and your HTTP
 server. Werkzeug includes several `middlewares
-<http://werkzeug.pocoo.org/docs/middlewares/>`_.
+<https://werkzeug.palletsprojects.com/middleware/>`_.
 
 Fork.
 -----
@@ -96,6 +95,6 @@ Discuss with the community.
 
 The Flask developers keep the framework accessible to users with codebases big
 and small. If you find an obstacle in your way, caused by Flask, don't hesitate
-to contact the developers on the mailinglist or IRC channel.  The best way for
+to contact the developers on the mailing list or Discord server.  The best way for
 the Flask and Flask extension developers to improve the tools for larger
 applications is getting feedback from users.

@@ -1,5 +1,3 @@
-.. _uploading-files:
-
 Uploading Files
 ===============
 
@@ -21,11 +19,11 @@ specific upload folder and displays a file to the user.  Let's look at the
 bootstrapping code for our application::
 
     import os
-    from flask import Flask, request, redirect, url_for
+    from flask import Flask, flash, request, redirect, url_for
     from werkzeug.utils import secure_filename
 
     UPLOAD_FOLDER = '/path/to/the/uploads'
-    ALLOWED_EXTENSIONS = set(['txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif'])
+    ALLOWED_EXTENSIONS = {'txt', 'pdf', 'png', 'jpg', 'jpeg', 'gif'}
 
     app = Flask(__name__)
     app.config['UPLOAD_FOLDER'] = UPLOAD_FOLDER
@@ -39,15 +37,15 @@ Why do we limit the extensions that are allowed?  You probably don't want
 your users to be able to upload everything there if the server is directly
 sending out the data to the client.  That way you can make sure that users
 are not able to upload HTML files that would cause XSS problems (see
-:ref:`xss`).  Also make sure to disallow ``.php`` files if the server
-executes them, but who has PHP installed on his server, right?  :)
+:ref:`security-xss`).  Also make sure to disallow ``.php`` files if the server
+executes them, but who has PHP installed on their server, right?  :)
 
 Next the functions that check if an extension is valid and that uploads
 the file and redirects the user to the URL for the uploaded file::
 
     def allowed_file(filename):
         return '.' in filename and \
-               filename.rsplit('.', 1)[1] in ALLOWED_EXTENSIONS
+               filename.rsplit('.', 1)[1].lower() in ALLOWED_EXTENSIONS
 
     @app.route('/', methods=['GET', 'POST'])
     def upload_file():
@@ -58,7 +56,7 @@ the file and redirects the user to the URL for the uploaded file::
                 return redirect(request.url)
             file = request.files['file']
             # if user does not select file, browser also
-            # submit a empty part without filename
+            # submit an empty part without filename
             if file.filename == '':
                 flash('No selected file')
                 return redirect(request.url)
@@ -71,9 +69,9 @@ the file and redirects the user to the URL for the uploaded file::
         <!doctype html>
         <title>Upload new File</title>
         <h1>Upload new File</h1>
-        <form action="" method=post enctype=multipart/form-data>
-          <p><input type=file name=file>
-             <input type=submit value=Upload>
+        <form method=post enctype=multipart/form-data>
+          <input type=file name=file>
+          <input type=submit value=Upload>
         </form>
         '''
 
@@ -104,9 +102,9 @@ before storing it directly on the filesystem.
    >>> secure_filename('../../../../home/username/.bashrc')
    'home_username_.bashrc'
 
-Now one last thing is missing: the serving of the uploaded files. In the 
-:func:`upload_file()` we redirect the user to 
-``url_for('uploaded_file', filename=filename)``, that is, ``/uploads/filename``. 
+Now one last thing is missing: the serving of the uploaded files. In the
+:func:`upload_file()` we redirect the user to
+``url_for('uploaded_file', filename=filename)``, that is, ``/uploads/filename``.
 So we write the :func:`uploaded_file` function to return the file of that name. As
 of Flask 0.5 we can use a function that does that for us::
 
@@ -121,7 +119,7 @@ Alternatively you can register `uploaded_file` as `build_only` rule and
 use the :class:`~werkzeug.wsgi.SharedDataMiddleware`.  This also works with
 older versions of Flask::
 
-    from werkzeug import SharedDataMiddleware
+    from werkzeug.middleware.shared_data import SharedDataMiddleware
     app.add_url_rule('/uploads/<filename>', 'uploaded_file',
                      build_only=True)
     app.wsgi_app = SharedDataMiddleware(app.wsgi_app, {
@@ -147,11 +145,17 @@ config key::
     from flask import Flask, Request
 
     app = Flask(__name__)
-    app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
+    app.config['MAX_CONTENT_LENGTH'] = 16 * 1000 * 1000
 
-The code above will limited the maximum allowed payload to 16 megabytes.
-If a larger file is transmitted, Flask will raise an
+The code above will limit the maximum allowed payload to 16 megabytes.
+If a larger file is transmitted, Flask will raise a
 :exc:`~werkzeug.exceptions.RequestEntityTooLarge` exception.
+
+.. admonition:: Connection Reset Issue
+
+    When using the local development server, you may get a connection
+    reset error instead of a 413 response. You will get the correct
+    status response when running the app with a production WSGI server.
 
 This feature was added in Flask 0.6 but can be achieved in older versions
 as well by subclassing the request object.  For more information on that
@@ -181,4 +185,4 @@ applications dealing with uploads, there is also a Flask extension called
 blacklisting of extensions and more.
 
 .. _jQuery: https://jquery.com/
-.. _Flask-Uploads: http://pythonhosted.org/Flask-Uploads/
+.. _Flask-Uploads: https://pythonhosted.org/Flask-Uploads/

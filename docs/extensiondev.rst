@@ -1,19 +1,14 @@
-.. _extension-dev:
-
 Flask Extension Development
 ===========================
 
 Flask, being a microframework, often requires some repetitive steps to get
-a third party library working.  Because very often these steps could be
-abstracted to support multiple projects the `Flask Extension Registry`_
-was created.
+a third party library working. Many such extensions are already available
+on `PyPI`_.
 
 If you want to create your own Flask extension for something that does not
 exist yet, this guide to extension development will help you get your
 extension running in no time and to feel like users would expect your
 extension to behave.
-
-.. _Flask Extension Registry: http://flask.pocoo.org/extensions/
 
 Anatomy of an Extension
 -----------------------
@@ -29,18 +24,13 @@ be something like "Flask-SimpleXML".  Make sure to include the name
 This is how users can then register dependencies to your extension in
 their :file:`setup.py` files.
 
-Flask sets up a redirect package called :data:`flask.ext` where users
-should import the extensions from.  If you for instance have a package
-called ``flask_something`` users would import it as
-``flask.ext.something``.  This is done to transition from the old
-namespace packages.  See :ref:`ext-import-transition` for more details.
-
-But how do extensions look like themselves?  An extension has to ensure
+But what do extensions look like themselves?  An extension has to ensure
 that it works with multiple Flask application instances at once.  This is
 a requirement because many people will use patterns like the
-:ref:`app-factories` pattern to create their application as needed to aid
-unittests and to support multiple configurations.  Because of that it is
-crucial that your application supports that kind of behavior.
+:doc:`/patterns/appfactories` pattern to create their application as
+needed to aid unittests and to support multiple configurations. Because
+of that it is crucial that your application supports that kind of
+behavior.
 
 Most importantly the extension must be shipped with a :file:`setup.py` file and
 registered on PyPI.  Also the development checkout link should work so
@@ -48,7 +38,7 @@ that people can easily install the development version into their
 virtualenv without having to download the library by hand.
 
 Flask extensions must be licensed under a BSD, MIT or more liberal license
-to be able to be enlisted in the Flask Extension Registry.  Keep in mind
+in order to be listed in the Flask Extension Registry.  Keep in mind
 that the Flask Extension Registry is a moderated place and libraries will
 be reviewed upfront if they behave as required.
 
@@ -128,8 +118,8 @@ Initializing Extensions
 
 Many extensions will need some kind of initialization step.  For example,
 consider an application that's currently connecting to SQLite like the
-documentation suggests (:ref:`sqlite3`).  So how does the extension
-know the name of the application object?
+documentation suggests (:doc:`/patterns/sqlite3`). So how does the
+extension know the name of the application object?
 
 Quite simple: you pass it to it.
 
@@ -154,10 +144,10 @@ What to use depends on what you have in mind.  For the SQLite 3 extension
 we will use the class-based approach because it will provide users with an
 object that handles opening and closing database connections.
 
-What's important about classes is that they encourage to be shared around
-on module level.  In that case, the object itself must not under any
+When designing your classes, it's important to make them easily reusable
+at the module level. This means the object itself must not under any
 circumstances store any application specific state and must be shareable
-between different application.
+between different applications.
 
 The Extension Code
 ------------------
@@ -165,19 +155,10 @@ The Extension Code
 Here's the contents of the `flask_sqlite3.py` for copy/paste::
 
     import sqlite3
-    from flask import current_app
-
-    # Find the stack on which we want to store the database connection.
-    # Starting with Flask 0.9, the _app_ctx_stack is the correct one,
-    # before that we need to use the _request_ctx_stack.
-    try:
-        from flask import _app_ctx_stack as stack
-    except ImportError:
-        from flask import _request_ctx_stack as stack
+    from flask import current_app, _app_ctx_stack
 
 
     class SQLite3(object):
-
         def __init__(self, app=None):
             self.app = app
             if app is not None:
@@ -185,24 +166,19 @@ Here's the contents of the `flask_sqlite3.py` for copy/paste::
 
         def init_app(self, app):
             app.config.setdefault('SQLITE3_DATABASE', ':memory:')
-            # Use the newstyle teardown_appcontext if it's available,
-            # otherwise fall back to the request context
-            if hasattr(app, 'teardown_appcontext'):
-                app.teardown_appcontext(self.teardown)
-            else:
-                app.teardown_request(self.teardown)
+            app.teardown_appcontext(self.teardown)
 
         def connect(self):
             return sqlite3.connect(current_app.config['SQLITE3_DATABASE'])
 
         def teardown(self, exception):
-            ctx = stack.top
+            ctx = _app_ctx_stack.top
             if hasattr(ctx, 'sqlite3_db'):
                 ctx.sqlite3_db.close()
 
         @property
         def connection(self):
-            ctx = stack.top
+            ctx = _app_ctx_stack.top
             if ctx is not None:
                 if not hasattr(ctx, 'sqlite3_db'):
                     ctx.sqlite3_db = self.connect()
@@ -217,10 +193,8 @@ So here's what these lines of code do:
     instantiated without requiring an app object.  This method supports the
     factory pattern for creating applications.  The ``init_app`` will set the
     configuration for the database, defaulting to an in memory database if
-    no configuration is supplied.  In addition, the ``init_app`` method attaches
-    the ``teardown`` handler.  It will try to use the newstyle app context
-    handler and if it does not exist, falls back to the request context
-    one.
+    no configuration is supplied.  In addition, the ``init_app`` method
+    attaches the ``teardown`` handler.
 3.  Next, we define a ``connect`` method that opens a database connection.
 4.  Finally, we add a ``connection`` property that on first access opens
     the database connection and stores it on the context.  This is also
@@ -230,9 +204,7 @@ So here's what these lines of code do:
     Note here that we're attaching our database connection to the top
     application context via ``_app_ctx_stack.top``. Extensions should use
     the top context for storing their own information with a sufficiently
-    complex name.  Note that we're falling back to the
-    ``_request_ctx_stack.top`` if the application is using an older
-    version of Flask that does not support it.
+    complex name.
 
 So why did we decide on a class-based approach here?  Because using our
 extension looks something like this::
@@ -251,9 +223,8 @@ You can then use the database from views like this::
         cur = db.connection.cursor()
         cur.execute(...)
 
-Likewise if you are outside of a request but you are using Flask 0.9 or
-later with the app context support, you can use the database in the same
-way::
+Likewise if you are outside of a request you can use the database by
+pushing an app context::
 
     with app.app_context():
         cur = db.connection.cursor()
@@ -265,7 +236,7 @@ automatically.
 Additionally, the ``init_app`` method is used to support the factory pattern
 for creating apps::
 
-    db = Sqlite3()
+    db = SQLite3()
     # Then later on.
     app = create_app('the-config.cfg')
     db.init_app(app)
@@ -297,50 +268,21 @@ teardown of a request, the ``sqlite3_db`` connection is closed.  By using
 this pattern, the *same* connection to the sqlite3 database is accessible
 to anything that needs it for the duration of the request.
 
-If the :data:`~flask._app_ctx_stack` does not exist because the user uses
-an old version of Flask, it is recommended to fall back to
-:data:`~flask._request_ctx_stack` which is bound to a request.
-
-Teardown Behavior
------------------
-
-*This is only relevant if you want to support Flask 0.6 and older*
-
-Due to the change in Flask 0.7 regarding functions that are run at the end
-of the request your extension will have to be extra careful there if it
-wants to continue to support older versions of Flask.  The following
-pattern is a good way to support both::
-
-    def close_connection(response):
-        ctx = _request_ctx_stack.top
-        ctx.sqlite3_db.close()
-        return response
-
-    if hasattr(app, 'teardown_request'):
-        app.teardown_request(close_connection)
-    else:
-        app.after_request(close_connection)
-
-Strictly speaking the above code is wrong, because teardown functions are
-passed the exception and typically don't return anything.  However because
-the return value is discarded this will just work assuming that the code
-in between does not touch the passed parameter.
 
 Learn from Others
 -----------------
 
-This documentation only touches the bare minimum for extension
-development.  If you want to learn more, it's a very good idea to check
-out existing extensions on the `Flask Extension Registry`_.  If you feel
-lost there is still the `mailinglist`_ and the `IRC channel`_ to get some
-ideas for nice looking APIs.  Especially if you do something nobody before
-you did, it might be a very good idea to get some more input.  This not
-only to get an idea about what people might want to have from an
-extension, but also to avoid having multiple developers working on pretty
-much the same side by side.
+This documentation only touches the bare minimum for extension development.
+If you want to learn more, it's a very good idea to check out existing extensions
+on the `PyPI`_.  If you feel lost there is still the `mailinglist`_ and the
+`Discord server`_ to get some ideas for nice looking APIs.  Especially if you do
+something nobody before you did, it might be a very good idea to get some more
+input.  This not only generates useful feedback on what people might want from
+an extension, but also avoids having multiple developers working in isolation
+on pretty much the same problem.
 
 Remember: good API design is hard, so introduce your project on the
-mailinglist, and let other developers give you a helping hand with
+mailing list, and let other developers give you a helping hand with
 designing the API.
 
 The best Flask extensions are extensions that share common idioms for the
@@ -349,72 +291,46 @@ API.  And this can only work if collaboration happens early.
 Approved Extensions
 -------------------
 
-Flask also has the concept of approved extensions.  Approved extensions
-are tested as part of Flask itself to ensure extensions do not break on
-new releases.  These approved extensions are listed on the `Flask
-Extension Registry`_ and marked appropriately.  If you want your own
-extension to be approved you have to follow these guidelines:
+Flask previously had the concept of approved extensions. These came with
+some vetting of support and compatibility. While this list became too
+difficult to maintain over time, the guidelines are still relevant to
+all extensions maintained and developed today, as they help the Flask
+ecosystem remain consistent and compatible.
 
 0.  An approved Flask extension requires a maintainer. In the event an
-    extension author would like to move beyond the project, the project should
-    find a new maintainer including full source hosting transition and PyPI
-    access.  If no maintainer is available, give access to the Flask core team.
-1.  An approved Flask extension must provide exactly one package or module
-    named ``flask_extensionname``.  They might also reside inside a
-    ``flaskext`` namespace packages though this is discouraged now.
-2.  It must ship a testing suite that can either be invoked with ``make test``
-    or ``python setup.py test``.  For test suites invoked with ``make
-    test`` the extension has to ensure that all dependencies for the test
-    are installed automatically.  If tests are invoked with ``python setup.py
-    test``, test dependencies can be specified in the :file:`setup.py` file.  The
-    test suite also has to be part of the distribution.
-3.  APIs of approved extensions will be checked for the following
-    characteristics:
+    extension author would like to move beyond the project, the project
+    should find a new maintainer and transfer access to the repository,
+    documentation, PyPI, and any other services. If no maintainer
+    is available, give access to the Pallets core team.
+1.  The naming scheme is *Flask-ExtensionName* or *ExtensionName-Flask*.
+    It must provide exactly one package or module named
+    ``flask_extension_name``.
+2.  The extension must be BSD or MIT licensed. It must be open source
+    and publicly available.
+3.  The extension's API must have the following characteristics:
 
-    -   an approved extension has to support multiple applications
-        running in the same Python process.
-    -   it must be possible to use the factory pattern for creating
-        applications.
+    -   It must support multiple applications running in the same Python
+        process. Use ``current_app`` instead of ``self.app``, store
+        configuration and state per application instance.
+    -   It must be possible to use the factory pattern for creating
+        applications. Use the ``ext.init_app()`` pattern.
 
-4.  The license must be BSD/MIT/WTFPL licensed.
-5.  The naming scheme for official extensions is *Flask-ExtensionName* or
-    *ExtensionName-Flask*.
-6.  Approved extensions must define all their dependencies in the
-    :file:`setup.py` file unless a dependency cannot be met because it is not
-    available on PyPI.
-7.  The extension must have documentation that uses one of the two Flask
-    themes for Sphinx documentation.
-8.  The setup.py description (and thus the PyPI description) has to
-    link to the documentation, website (if there is one) and there
-    must be a link to automatically install the development version
-    (``PackageName==dev``).
-9.  The ``zip_safe`` flag in the setup script must be set to ``False``,
-    even if the extension would be safe for zipping.
-10. An extension currently has to support Python 2.6 as well as
-    Python 2.7
+4.  From a clone of the repository, an extension with its dependencies
+    must be installable with ``pip install -e .``.
+5.  It must ship a testing suite that can be invoked with ``tox -e py``
+    or ``pytest``. If not using ``tox``, the test dependencies should be
+    specified in a ``requirements.txt`` file. The tests must be part of
+    the sdist distribution.
+6.  The documentation must use the ``flask`` theme from the
+    `Official Pallets Themes`_. A link to the documentation or project
+    website must be in the PyPI metadata or the readme.
+7.  For maximum compatibility, the extension should support the same
+    versions of Python that Flask supports. 3.6+ is recommended as of
+    2020. Use ``python_requires=">= 3.6"`` in ``setup.py`` to indicate
+    supported versions.
 
-
-.. _ext-import-transition:
-
-Extension Import Transition
----------------------------
-
-For a while we recommended using namespace packages for Flask extensions.
-This turned out to be problematic in practice because many different
-competing namespace package systems exist and pip would automatically
-switch between different systems and this caused a lot of problems for
-users.
-
-Instead we now recommend naming packages ``flask_foo`` instead of the now
-deprecated ``flaskext.foo``.  Flask 0.8 introduces a redirect import
-system that lets uses import from ``flask.ext.foo`` and it will try
-``flask_foo`` first and if that fails ``flaskext.foo``.
-
-Flask extensions should urge users to import from ``flask.ext.foo``
-instead of ``flask_foo`` or ``flaskext_foo`` so that extensions can
-transition to the new package name without affecting users.
-
-
-.. _OAuth extension: http://pythonhosted.org/Flask-OAuth/
-.. _mailinglist: http://flask.pocoo.org/mailinglist/
-.. _IRC channel: http://flask.pocoo.org/community/irc/
+.. _PyPI: https://pypi.org/search/?c=Framework+%3A%3A+Flask
+.. _OAuth extension: https://pythonhosted.org/Flask-OAuth/
+.. _mailinglist: https://mail.python.org/mailman/listinfo/flask
+.. _Discord server: https://discord.gg/t6rrQZH
+.. _Official Pallets Themes: https://pypi.org/project/Pallets-Sphinx-Themes/

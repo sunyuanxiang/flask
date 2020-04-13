@@ -1,5 +1,3 @@
-.. _api:
-
 API
 ===
 
@@ -30,99 +28,10 @@ Incoming Request Data
 
 .. autoclass:: Request
    :members:
+   :inherited-members:
+   :exclude-members: json_module
 
-   .. attribute:: form
-
-      A :class:`~werkzeug.datastructures.MultiDict` with the parsed form data from ``POST``
-      or ``PUT`` requests.  Please keep in mind that file uploads will not
-      end up here,  but instead in the :attr:`files` attribute.
-
-   .. attribute:: args
-
-      A :class:`~werkzeug.datastructures.MultiDict` with the parsed contents of the query
-      string.  (The part in the URL after the question mark).
-
-   .. attribute:: values
-
-      A :class:`~werkzeug.datastructures.CombinedMultiDict` with the contents of both
-      :attr:`form` and :attr:`args`.
-
-   .. attribute:: cookies
-
-      A :class:`dict` with the contents of all cookies transmitted with
-      the request.
-
-   .. attribute:: stream
-
-      If the incoming form data was not encoded with a known mimetype
-      the data is stored unmodified in this stream for consumption.  Most
-      of the time it is a better idea to use :attr:`data` which will give
-      you that data as a string.  The stream only returns the data once.
-
-   .. attribute:: headers
-
-      The incoming request headers as a dictionary like object.
-
-   .. attribute:: data
-
-      Contains the incoming request data as string in case it came with
-      a mimetype Flask does not handle.
-
-   .. attribute:: files
-
-      A :class:`~werkzeug.datastructures.MultiDict` with files uploaded as part of a
-      ``POST`` or ``PUT`` request.  Each file is stored as
-      :class:`~werkzeug.datastructures.FileStorage` object.  It basically behaves like a
-      standard file object you know from Python, with the difference that
-      it also has a :meth:`~werkzeug.datastructures.FileStorage.save` function that can
-      store the file on the filesystem.
-
-   .. attribute:: environ
-
-      The underlying WSGI environment.
-
-   .. attribute:: method
-
-      The current request method (``POST``, ``GET`` etc.)
-
-   .. attribute:: path
-   .. attribute:: full_path
-   .. attribute:: script_root
-   .. attribute:: url
-   .. attribute:: base_url
-   .. attribute:: url_root
-
-      Provides different ways to look at the current `IRI
-      <http://tools.ietf.org/html/rfc3987>`_.  Imagine your application is
-      listening on the following application root::
-
-          http://www.example.com/myapplication
-
-      And a user requests the following URI::
-
-          http://www.example.com/myapplication/%CF%80/page.html?x=y
-
-      In this case the values of the above mentioned attributes would be
-      the following:
-
-      ============= ======================================================
-      `path`        ``u'/π/page.html'``
-      `full_path`   ``u'/π/page.html?x=y'``
-      `script_root` ``u'/myapplication'``
-      `base_url`    ``u'http://www.example.com/myapplication/π/page.html'``
-      `url`         ``u'http://www.example.com/myapplication/π/page.html?x=y'``
-      `url_root`    ``u'http://www.example.com/myapplication/'``
-      ============= ======================================================
-
-   .. attribute:: is_xhr
-
-      ``True`` if the request was triggered via a JavaScript
-      `XMLHttpRequest`. This only works with libraries that support the
-      ``X-Requested-With`` header and set it to `XMLHttpRequest`.
-      Libraries that do that are prototype, jQuery and Mochikit and
-      probably some more.
-
-.. class:: request
+.. attribute:: request
 
    To access incoming request data, you can use the global `request`
    object.  Flask parses incoming request data for you and gives you
@@ -141,7 +50,7 @@ Response Objects
 ----------------
 
 .. autoclass:: flask.Response
-   :members: set_cookie, data, mimetype
+   :members: set_cookie, max_cookie_size, data, mimetype, is_json, get_json
 
    .. attribute:: headers
 
@@ -159,19 +68,19 @@ Response Objects
 Sessions
 --------
 
-If you have the :attr:`Flask.secret_key` set you can use sessions in Flask
-applications.  A session basically makes it possible to remember
-information from one request to another.  The way Flask does this is by
-using a signed cookie.  So the user can look at the session contents, but
-not modify it unless they know the secret key, so make sure to set that
-to something complex and unguessable.
+If you have set :attr:`Flask.secret_key` (or configured it from
+:data:`SECRET_KEY`) you can use sessions in Flask applications. A session makes
+it possible to remember information from one request to another. The way Flask
+does this is by using a signed cookie. The user can look at the session
+contents, but can't modify it unless they know the secret key, so make sure to
+set that to something complex and unguessable.
 
 To access the current session you can use the :class:`session` object:
 
 .. class:: session
 
    The session object works pretty much like an ordinary dict, with the
-   difference that it keeps track on modifications.
+   difference that it keeps track of modifications.
 
    This is a proxy.  See :ref:`notes-on-proxies` for more information.
 
@@ -227,18 +136,6 @@ implementation that Flask is using.
 .. autoclass:: SessionMixin
    :members:
 
-.. autodata:: session_json_serializer
-
-   This object provides dumping and loading methods similar to simplejson
-   but it also tags certain builtin Python objects that commonly appear in
-   sessions.  Currently the following extended values are supported in
-   the JSON it dumps:
-
-   -    :class:`~markupsafe.Markup` objects
-   -    :class:`~uuid.UUID` objects
-   -    :class:`~datetime.datetime` objects
-   -   :class:`tuple`\s
-
 .. admonition:: Notice
 
    The ``PERMANENT_SESSION_LIFETIME`` config key can also be an integer
@@ -256,6 +153,15 @@ Test Client
    :members:
 
 
+Test CLI Runner
+---------------
+
+.. currentmodule:: flask.testing
+
+.. autoclass:: FlaskCliRunner
+    :members:
+
+
 Application Globals
 -------------------
 
@@ -270,29 +176,22 @@ thing, like it does for :class:`request` and :class:`session`.
 
 .. data:: g
 
-   Just store on this whatever you want.  For example a database
-   connection or the user that is currently logged in.
+    A namespace object that can store data during an
+    :doc:`application context </appcontext>`. This is an instance of
+    :attr:`Flask.app_ctx_globals_class`, which defaults to
+    :class:`ctx._AppCtxGlobals`.
 
-   Starting with Flask 0.10 this is stored on the application context and
-   no longer on the request context which means it becomes available if
-   only the application context is bound and not yet a request.  This
-   is especially useful when combined with the :ref:`faking-resources`
-   pattern for testing.
+    This is a good place to store resources during a request. During
+    testing, you can use the :ref:`faking-resources` pattern to
+    pre-configure such resources.
 
-   Additionally as of 0.10 you can use the :meth:`get` method to
-   get an attribute or ``None`` (or the second argument) if it's not set.
-   These two usages are now equivalent::
+    This is a proxy. See :ref:`notes-on-proxies` for more information.
 
-        user = getattr(flask.g, 'user', None)
-        user = flask.g.get('user', None)
+    .. versionchanged:: 0.10
+        Bound to the application context instead of the request context.
 
-   It's now also possible to use the ``in`` operator on it to see if an
-   attribute is defined and it yields all keys on iteration.
-
-   As of 1.0 you can use :meth:`pop` and :meth:`setdefault` in the same
-   way you would use them on a dictionary.
-
-   This is a proxy.  See :ref:`notes-on-proxies` for more information.
+.. autoclass:: flask.ctx._AppCtxGlobals
+    :members:
 
 
 Useful Functions and Classes
@@ -300,13 +199,17 @@ Useful Functions and Classes
 
 .. data:: current_app
 
-   Points to the application handling the request.  This is useful for
-   extensions that want to support multiple applications running side
-   by side.  This is powered by the application context and not by the
-   request context, so you can change the value of this proxy by
-   using the :meth:`~flask.Flask.app_context` method.
+    A proxy to the application handling the current request. This is
+    useful to access the application without needing to import it, or if
+    it can't be imported, such as when using the application factory
+    pattern or in blueprints and extensions.
 
-   This is a proxy.  See :ref:`notes-on-proxies` for more information.
+    This is only available when an
+    :doc:`application context </appcontext>` is pushed. This happens
+    automatically during requests and CLI commands. It can be controlled
+    manually with :meth:`~flask.Flask.app_context`.
+
+    This is a proxy. See :ref:`notes-on-proxies` for more information.
 
 .. autofunction:: has_request_context
 
@@ -316,13 +219,7 @@ Useful Functions and Classes
 
 .. autofunction:: url_for
 
-.. function:: abort(code)
-
-   Raises an :exc:`~werkzeug.exceptions.HTTPException` for the given
-   status code.  For example to abort request handling with a page not
-   found exception, you would call ``abort(404)``.
-
-   :param code: the HTTP error code.
+.. autofunction:: abort
 
 .. autofunction:: redirect
 
@@ -348,57 +245,33 @@ Message Flashing
 
 .. autofunction:: get_flashed_messages
 
+
 JSON Support
 ------------
 
 .. module:: flask.json
 
-Flask uses ``simplejson`` for the JSON implementation.  Since simplejson
-is provided by both the standard library as well as extension, Flask will
-try simplejson first and then fall back to the stdlib json module.  On top
-of that it will delegate access to the current application's JSON encoders
-and decoders for easier customization.
+Flask uses the built-in :mod:`json` module for handling JSON. It will
+use the current blueprint's or application's JSON encoder and decoder
+for easier customization. By default it handles some extra data types:
 
-So for starters instead of doing::
+-   :class:`datetime.datetime` and :class:`datetime.date` are serialized
+    to :rfc:`822` strings. This is the same as the HTTP date format.
+-   :class:`uuid.UUID` is serialized to a string.
+-   :class:`dataclasses.dataclass` is passed to
+    :func:`dataclasses.asdict`.
+-   :class:`~markupsafe.Markup` (or any object with a ``__html__``
+    method) will call the ``__html__`` method to get a string.
 
-    try:
-        import simplejson as json
-    except ImportError:
-        import json
-
-You can instead just do this::
-
-    from flask import json
-
-For usage examples, read the :mod:`json` documentation in the standard
-library.  The following extensions are by default applied to the stdlib's
-JSON module:
-
-1.  ``datetime`` objects are serialized as :rfc:`822` strings.
-2.  Any object with an ``__html__`` method (like :class:`~flask.Markup`)
-    will have that method called and then the return value is serialized
-    as string.
-
-The :func:`~htmlsafe_dumps` function of this json module is also available
-as filter called ``|tojson`` in Jinja2.  Note that inside ``script``
-tags no escaping must take place, so make sure to disable escaping
-with ``|safe`` if you intend to use it inside ``script`` tags unless
-you are using Flask 0.10 which implies that:
+:func:`~htmlsafe_dumps` is also available as the ``|tojson`` template
+filter. The filter marks the output with ``|safe`` so it can be used
+inside ``script`` tags.
 
 .. sourcecode:: html+jinja
 
     <script type=text/javascript>
-        doSomethingWith({{ user.username|tojson|safe }});
+        renderChart({{ axis_data|tojson }});
     </script>
-
-.. admonition:: Auto-Sort JSON Keys
-
-    The configuration variable ``JSON_SORT_KEYS`` (:ref:`config`) can be
-    set to false to stop Flask from auto-sorting keys.  By default sorting
-    is enabled and outside of the app context sorting is turned on.
-
-    Notice that disabling key sorting can cause issues when using content
-    based HTTP caches and Python's hash randomization feature.
 
 .. autofunction:: jsonify
 
@@ -415,6 +288,9 @@ you are using Flask 0.10 which implies that:
 
 .. autoclass:: JSONDecoder
    :members:
+
+.. automodule:: flask.json.tag
+
 
 Template Rendering
 ------------------
@@ -433,22 +309,6 @@ Configuration
 .. autoclass:: Config
    :members:
 
-Extensions
-----------
-
-.. data:: flask.ext
-
-   This module acts as redirect import module to Flask extensions.  It was
-   added in 0.8 as the canonical way to import Flask extensions and makes
-   it possible for us to have more flexibility in how we distribute
-   extensions.
-
-   If you want to use an extension named “Flask-Foo” you would import it
-   from :data:`~flask.ext` as follows::
-
-        from flask.ext import foo
-
-   .. versionadded:: 0.8
 
 Stream Helpers
 --------------
@@ -463,50 +323,54 @@ Useful Internals
 
 .. data:: _request_ctx_stack
 
-   The internal :class:`~werkzeug.local.LocalStack` that is used to implement
-   all the context local objects used in Flask.  This is a documented
-   instance and can be used by extensions and application code but the
-   use is discouraged in general.
+    The internal :class:`~werkzeug.local.LocalStack` that holds
+    :class:`~flask.ctx.RequestContext` instances. Typically, the
+    :data:`request` and :data:`session` proxies should be accessed
+    instead of the stack. It may be useful to access the stack in
+    extension code.
 
-   The following attributes are always present on each layer of the
-   stack:
+    The following attributes are always present on each layer of the
+    stack:
 
-   `app`
+    `app`
       the active Flask application.
 
-   `url_adapter`
+    `url_adapter`
       the URL adapter that was used to match the request.
 
-   `request`
+    `request`
       the current request object.
 
-   `session`
+    `session`
       the active session object.
 
-   `g`
+    `g`
       an object with all the attributes of the :data:`flask.g` object.
 
-   `flashes`
+    `flashes`
       an internal cache for the flashed messages.
 
-   Example usage::
+    Example usage::
 
-      from flask import _request_ctx_stack
+        from flask import _request_ctx_stack
 
-      def get_session():
-          ctx = _request_ctx_stack.top
-          if ctx is not None:
-              return ctx.session
+        def get_session():
+            ctx = _request_ctx_stack.top
+            if ctx is not None:
+                return ctx.session
 
 .. autoclass:: flask.ctx.AppContext
    :members:
 
 .. data:: _app_ctx_stack
 
-   Works similar to the request context but only binds the application.
-   This is mainly there for extensions to store data.
+    The internal :class:`~werkzeug.local.LocalStack` that holds
+    :class:`~flask.ctx.AppContext` instances. Typically, the
+    :data:`current_app` and :data:`g` proxies should be accessed instead
+    of the stack. Extensions can access the contexts on the stack as a
+    namespace to store data.
 
-   .. versionadded:: 0.9
+    .. versionadded:: 0.9
 
 .. autoclass:: flask.blueprints.BlueprintSetupState
    :members:
@@ -709,7 +573,7 @@ The following signals exist in Flask:
       operations, including connecting.
 
 
-.. _blinker: https://pypi.python.org/pypi/blinker
+.. _blinker: https://pypi.org/project/blinker/
 
 
 Class-Based Views
@@ -751,6 +615,8 @@ The following converters are available:
 `int`       accepts integers
 `float`     like `int` but for floating point values
 `path`      like the default but also accepts slashes
+`any`       matches one of the items provided
+`uuid`      accepts UUID strings
 =========== ===============================================
 
 Custom converters can be defined using :attr:`flask.Flask.url_map`.
@@ -792,7 +658,18 @@ definition for a URL that accepts an optional page::
         pass
 
 This specifies that ``/users/`` will be the URL for page one and
-``/users/page/N`` will be the URL for page `N`.
+``/users/page/N`` will be the URL for page ``N``.
+
+If a URL contains a default value, it will be redirected to its simpler
+form with a 301 redirect. In the above example, ``/users/page/1`` will
+be redirected to ``/users/``. If your route handles ``GET`` and ``POST``
+requests, make sure the default route only handles ``GET``, as redirects
+can't preserve form data. ::
+
+   @app.route('/region/', defaults={'id': 1})
+   @app.route('/region/<int:id>', methods=['GET', 'POST'])
+   def region(id):
+      pass
 
 Here are the parameters that :meth:`~flask.Flask.route` and
 :meth:`~flask.Flask.add_url_rule` accept.  The only difference is that
@@ -824,7 +701,6 @@ instead of the `view_func` parameter.
                 handling.  They have to be specified as keyword arguments.
 =============== ==========================================================
 
-.. _view-func-options:
 
 View Function Options
 ---------------------
@@ -883,19 +759,14 @@ Command Line Interface
 .. autoclass:: ScriptInfo
    :members:
 
+.. autofunction:: load_dotenv
+
 .. autofunction:: with_appcontext
 
 .. autofunction:: pass_script_info
 
    Marks a function so that an instance of :class:`ScriptInfo` is passed
    as first argument to the click callback.
-
-.. autofunction:: script_info_option
-
-   A special decorator that informs a click callback to be passed the
-   script info object as first argument.  This is normally not useful
-   unless you implement very special commands like the run command which
-   does not want the application to be loaded yet.
 
 .. autodata:: run_command
 

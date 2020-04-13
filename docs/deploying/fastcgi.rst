@@ -1,13 +1,11 @@
-.. _deploying-fastcgi:
-
 FastCGI
 =======
 
 FastCGI is a deployment option on servers like `nginx`_, `lighttpd`_, and
-`cherokee`_; see :ref:`deploying-uwsgi` and :ref:`deploying-wsgi-standalone`
-for other options.  To use your WSGI application with any of them you will need
-a FastCGI server first.  The most popular one is `flup`_ which we will use for
-this guide.  Make sure to have it installed to follow along.
+`cherokee`_; see :doc:`uwsgi` and :doc:`wsgi-standalone` for other options.
+To use your WSGI application with any of them you will need a FastCGI
+server first. The most popular one is `flup`_ which we will use for
+this guide. Make sure to have it installed to follow along.
 
 .. admonition:: Watch Out
 
@@ -49,7 +47,7 @@ can execute it:
 
 .. sourcecode:: text
 
-    # chmod +x /var/www/yourapplication/yourapplication.fcgi
+    $ chmod +x /var/www/yourapplication/yourapplication.fcgi
 
 Configuring Apache
 ------------------
@@ -111,7 +109,7 @@ Set yourapplication.fcgi::
     #!/usr/bin/python
     #: optional path to your local python site-packages folder
     import sys
-    sys.path.insert(0, '<your_local_path>/lib/python2.6/site-packages')
+    sys.path.insert(0, '<your_local_path>/lib/python<your_python_version>/site-packages')
 
     from flup.server.fcgi import WSGIServer
     from yourapplication import app
@@ -144,7 +142,7 @@ A basic FastCGI configuration for lighttpd looks like that::
     )
 
     alias.url = (
-        "/static/" => "/path/to/your/static"
+        "/static/" => "/path/to/your/static/"
     )
 
     url.rewrite-once = (
@@ -159,7 +157,7 @@ work in the URL root you have to work around a lighttpd bug with the
 
 Make sure to apply it only if you are mounting the application the URL
 root. Also, see the Lighty docs for more information on `FastCGI and Python
-<http://redmine.lighttpd.net/projects/lighttpd/wiki/Docs_ModFastCGI>`_ (note that
+<https://redmine.lighttpd.net/projects/lighttpd/wiki/Docs_ModFastCGI>`_ (note that
 explicitly passing a socket to run() is no longer necessary).
 
 Configuring nginx
@@ -234,7 +232,7 @@ python path.  Common problems are:
     web server.
 -   Different python interpreters being used.
 
-.. _nginx: http://nginx.org/
-.. _lighttpd: http://www.lighttpd.net/
+.. _nginx: https://nginx.org/
+.. _lighttpd: https://www.lighttpd.net/
 .. _cherokee: http://cherokee-project.com/
-.. _flup: https://pypi.python.org/pypi/flup
+.. _flup: https://pypi.org/project/flup/
